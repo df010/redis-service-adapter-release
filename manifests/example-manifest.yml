@@ -1,0 +1,96 @@
+releases:
+  - name: &broker-release on-demand-service-broker
+    version: latest
+  - name: &service-adapter-release redis-service-adapter
+    version: latest
+  - name: &redis-service-release redis-service
+    version: latest
+
+stemcells:
+  - alias: trusty
+    os: ubuntu-trusty
+    version: latest
+
+instance_groups:
+  - name: broker
+    instances: 1
+    jobs:
+      - name: broker
+        release: *broker-release
+        properties:
+          port: 8080
+          username: broker #or replace with your own
+          password: password #or replace with your own
+          disable_ssl_cert_verification: <true | false> # optional
+          bosh:
+            url: <BOSH_URL>
+            root_ca_cert: <ca cert for bosh director and associated UAA> # optional, see SSL certificates
+            authentication: # either basic or uaa, not both as shown
+              basic:
+                username: admin #or replace with your own
+                password: admin #or replace with your own
+          cf:
+            url: https://api.<CF_DOMAIN>
+            root_ca_cert: <ca cert for cloud controller> # if disable_ssl_cert_verification: false, see SSL certificates
+            authentication:
+              url: https://uaa.<CF_DOMAIN>
+              user_credentials:
+                username: <CF_ADMIN_USERNAME>
+                password: <CF_ADMIN_PASSWORD>
+          service_deployment:
+            releases:
+              - name: *redis-service-release
+                version: latest
+                jobs: [redis]
+            stemcell:
+              os: ubuntu-trusty
+              version: latest
+          service_catalog:
+            id: redis-service-with-odb #create this yourself, can be human readable
+            service_name: redis-service-with-odb
+            service_description: Redis Service
+            bindable: true
+            plan_updatable: true
+            tags: [redis]
+            plans:
+              - name: small
+                plan_id: redis-service-with-odb-small # create this yourself, can be human readable
+                description: A Redis deployment with a single instance of each job and persistent disk
+                instance_groups:
+                  - name: redis
+                    vm_type: container
+                    instances: 6
+                    networks: [redis-instances] #from your cloud config
+                    azs: [lite] #from your cloud config
+                    persistent_disk_type: ten #from your cloud config
+      - name: redis-service-adapter
+        release: *service-adapter-release
+    vm_type: container
+    stemcell: trusty
+    azs: [lite]
+    networks:
+      - name: kafka #from your cloud config
+
+  - name: register-broker
+    lifecycle: errand
+    instances: 1
+    jobs:
+      - name: register-broker
+        release: *broker-release
+        properties:
+          broker_name: redis-service-with-odb
+          disable_ssl_cert_verification: true
+          cf:
+            api_url: https://api.<CF_DOMAIN>
+            admin_username: <CF_ADMIN_USER>
+            admin_password: <CF_ADMIN_PASSWORD>
+    vm_type: container
+    stemcell: trusty
+    networks: [{name: kafka}] #from your cloud config
+    azs: [lite]
+
+update:
+  canaries: 1
+  canary_watch_time: 3000-180000
+  update_watch_time: 3000-180000
+  max_in_flight: 4

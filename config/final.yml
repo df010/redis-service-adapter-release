@@ -1,1 +1,6 @@
-name: redis-service-adapter
+---
+final_name: redis-service-adapter
+blobstore:
+  provider: local
+  options:
+    blobstore_path: "/tmp/blobs"

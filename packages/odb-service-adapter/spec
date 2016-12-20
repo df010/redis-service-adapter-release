@@ -1,0 +1,8 @@
+---
+name: odb-service-adapter
+
+dependencies:
+- go
+
+files:
+  - github.com/df010/redis-service-adapter/**/*
