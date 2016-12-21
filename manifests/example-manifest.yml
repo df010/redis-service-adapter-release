@@ -1,9 +1,10 @@
+name: redis-broker
 releases:
   - name: &broker-release on-demand-service-broker
     version: latest
   - name: &service-adapter-release redis-service-adapter
     version: latest
-  - name: &redis-service-release redis-service
+  - name: &redis-service-release redis
     version: latest
 
 stemcells:
@@ -21,22 +22,22 @@ instance_groups:
           port: 8080
           username: broker #or replace with your own
           password: password #or replace with your own
-          disable_ssl_cert_verification: <true | false> # optional
+          disable_ssl_cert_verification: true
           bosh:
-            url: <BOSH_URL>
-            root_ca_cert: <ca cert for bosh director and associated UAA> # optional, see SSL certificates
+            url: https://192.168.50.4:25555
             authentication: # either basic or uaa, not both as shown
               basic:
                 username: admin #or replace with your own
                 password: admin #or replace with your own
           cf:
-            url: https://api.<CF_DOMAIN>
-            root_ca_cert: <ca cert for cloud controller> # if disable_ssl_cert_verification: false, see SSL certificates
+            url: https://api.local2.pcfdev.io
             authentication:
-              url: https://uaa.<CF_DOMAIN>
+              url: https://uaa.local2.pcfdev.io
               user_credentials:
-                username: <CF_ADMIN_USERNAME>
-                password: <CF_ADMIN_PASSWORD>
+                username: admin
+                password: admin
+          service_adapter:
+            path: /var/vcap/packages/odb-service-adapter/bin/service-adapter
           service_deployment:
             releases:
               - name: *redis-service-release
@@ -69,7 +70,7 @@ instance_groups:
     stemcell: trusty
     azs: [lite]
     networks:
-      - name: kafka #from your cloud config
+      - name: redis #from your cloud config
 
   - name: register-broker
     lifecycle: errand
@@ -81,12 +82,12 @@ instance_groups:
           broker_name: redis-service-with-odb
           disable_ssl_cert_verification: true
           cf:
-            api_url: https://api.<CF_DOMAIN>
-            admin_username: <CF_ADMIN_USER>
-            admin_password: <CF_ADMIN_PASSWORD>
+            api_url: https://api.local2.pcfdev.io
+            admin_username: admin
+            admin_password: admin
     vm_type: container
     stemcell: trusty
-    networks: [{name: kafka}] #from your cloud config
+    networks: [{name: redis}] #from your cloud config
     azs: [lite]
 
 update:
